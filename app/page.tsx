@@ -215,51 +215,130 @@ export default function Home() {
     setMessage(`User role assigned: ${roleToAssign}`)
   }
 
-  const uploadFileToStorage = async (file: File) => {
-    const filePath = `documents/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-    const { data, error } = await supabase.storage.from('documents').upload(filePath, file)
+  const storageBucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'Document'
 
+  const getStorageBucketList = async () => {
+    const { data, error } = await supabase.storage.listBuckets()
     if (error) {
-      console.error('Storage upload error', error)
-      return { error, path: '', url: '' }
+      console.error('Failed to list Supabase storage buckets', error)
+      return null
+    }
+    return data
+  }
+
+  const uploadFileToStorage = async (file: File) => {
+    const filePath = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+
+    console.log('Starting Supabase storage upload', {
+      storageBucket,
+      filePath,
+      fileName: file.name,
+      fileType: file.type,
+      envBucket: process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET,
+    })
+
+    const { data, error } = await supabase.storage.from(storageBucket).upload(filePath, file)
+    console.log('Supabase storage upload attempt', {
+      storageBucket,
+      filePath,
+      data,
+      error,
+      errorMessage: error?.message,
+      errorStatus: error?.status,
+      errorProps: error ? Object.getOwnPropertyNames(error) : [],
+    })
+
+    if (!error && data) {
+      const { data: publicUrlData } = supabase.storage.from(storageBucket).getPublicUrl(filePath)
+      return { path: filePath, url: publicUrlData.publicUrl ?? '' }
     }
 
-    const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(filePath)
-    return { path: filePath, url: publicUrlData.publicUrl ?? '' }
+    let diagnosticMessage = error?.message ?? `Storage bucket "${storageBucket}" not found or upload failed.`
+    const serializedError = error
+      ? JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
+      : 'No error object returned'
+
+    const bucketList = await getStorageBucketList()
+    const bucketNames = bucketList?.map((bucket: any) => bucket.name).join(', ') ?? 'unavailable'
+    diagnosticMessage += ` Available buckets: ${bucketNames}`
+    if (!bucketList) {
+      diagnosticMessage += ' (Unable to list buckets; check Supabase credentials or permissions.)'
+    }
+
+    console.error('Supabase storage bucket diagnostic', {
+      storageBucket,
+      bucketNames,
+      bucketList,
+      hasListBuckets: typeof supabase.storage.listBuckets === 'function',
+      storageClientType: typeof supabase.storage,
+    })
+
+    console.error('Supabase storage upload error', {
+      storageBucket,
+      filePath,
+      error,
+      serializedError,
+      diagnosticMessage,
+      errorMessage: error?.message,
+      errorStatus: error?.status,
+      errorProps: error ? Object.getOwnPropertyNames(error) : [],
+    })
+
+    return {
+      error: { message: diagnosticMessage },
+      path: '',
+      url: '',
+    }
   }
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null
     setNewFile(file)
+
+    if (file) {
+      if (!newTitle.trim()) {
+        const defaultTitle = file.name.replace(/\.[^/.]+$/, '')
+        setNewTitle(defaultTitle)
+      }
+      if (!newOwner.trim()) {
+        setNewOwner(ownerOptions[0])
+      }
+    }
   }
 
   const handleCreateDocument = async () => {
-    if (!newTitle.trim()) {
-      setMessage('Document title is required.')
-      return
-    }
-    if (!newOwner.trim()) {
-      setMessage('Owner is required.')
-      return
-    }
     if (!newFile) {
       setMessage('Please choose a file before uploading.')
       return
     }
 
+    const fileTitle = newTitle.trim() || newFile.name.replace(/\.[^/.]+$/, '')
+    const fileOwner = newOwner.trim() || ownerOptions[0]
+
+    if (!fileTitle) {
+      setMessage('Document title is required.')
+      return
+    }
+    if (!fileOwner) {
+      setMessage('Owner is required.')
+      return
+    }
+
     setIsSaving(true)
-    setMessage(null)
+    setMessage('Uploading document...')
 
     const upload = await uploadFileToStorage(newFile)
     if (upload.error) {
-      setMessage('File upload failed. Please try again.')
+      const errorMessage = upload.error?.message ?? 'File upload failed. Please try again.'
+      const bucketMessage = errorMessage.includes('bucket') ? `Supabase storage bucket: "${storageBucket}". ` : ''
+      setMessage(`${bucketMessage}${errorMessage}`)
       setIsSaving(false)
       return
     }
 
-    let title = newTitle
+    let title = fileTitle
     let version = newVersion
-    let owner = newOwner
+    let owner = fileOwner
     let type = newType
 
     if (uploadMode === 'version') {
@@ -388,6 +467,11 @@ export default function Home() {
         </aside>
 
         <section className="space-y-6">
+          {message ? (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {message}
+            </div>
+          ) : null}
           <header className="flex flex-col gap-4 rounded-3xl bg-white px-6 py-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Overview</p>
