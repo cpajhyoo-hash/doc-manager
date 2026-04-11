@@ -60,7 +60,7 @@ function getNextVersion(existingVersions: string[]) {
 export default function UploadPage() {
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [taskMode, setTaskMode] = useState<'new' | 'existing'>('new')
-  const [selectedTaskId, setSelectedTaskId] = useState<string>('')
+  const [selectedTaskId, setSelectedTaskId] = useState<string | number>('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newTaskOwner, setNewTaskOwner] = useState<typeof ownerOptions[number]>('Legal Team')
   const [newTaskStatus, setNewTaskStatus] = useState<TaskItem['status']>('Draft')
@@ -92,6 +92,7 @@ export default function UploadPage() {
       owner?: string
       status?: TaskItem['status']
       due_date?: string
+      deleted_at?: string | null
       created_at?: string
       task_files?: Array<{
         id: number
@@ -150,11 +151,11 @@ export default function UploadPage() {
       return { error, path: '', url: '' }
     }
 
-    const { data: publicUrlData, error: urlError } = supabase.storage.from(storageBucket).getPublicUrl(filePath)
+    const { data: publicUrlData } = supabase.storage.from(storageBucket).getPublicUrl(filePath)
     return {
       path: filePath,
       url: publicUrlData?.publicUrl ?? '',
-      error: error ?? urlError ?? null,
+      error: error ?? null,
     }
   }
 

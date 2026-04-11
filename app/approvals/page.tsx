@@ -56,6 +56,7 @@ export default function ApprovalsPage() {
         owner?: string
         status?: TaskItem['status']
         due_date?: string
+        deleted_at?: string | null
         created_at?: string
         updated_at?: string
         task_files?: Array<{

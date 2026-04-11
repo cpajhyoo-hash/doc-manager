@@ -64,6 +64,7 @@ export default function TasksPage() {
         owner?: string
         status?: TaskItem['status']
         due_date?: string
+        deleted_at?: string | null
         created_at?: string
         task_files?: Array<{
           id: number
