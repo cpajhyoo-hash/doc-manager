@@ -1,102 +1,70 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from './lib/supabase'
+import { useAuth } from './lib/auth-context'
 import SidebarNav from './components/SidebarNav'
+import Badge from './components/Badge'
+import type { Task, TaskFile } from './lib/types'
 
-type TaskFile = {
-  id: number
-  task_id: number
-  file_name: string
-  version: string
-  file_path: string
-  file_url: string
-  uploaded_at: string
+type RawTaskRow = {
+  id?: number
+  title?: string
+  owner?: string
+  status?: Task['status']
+  due_date?: string
+  deleted_at?: string | null
+  created_at?: string
+  task_files?: Array<{
+    id: number
+    task_id: number
+    file_name?: string
+    version?: string
+    file_path?: string
+    file_url?: string
+    uploaded_at?: string
+    created_at?: string
+  }>
 }
 
-type TaskItem = {
-  id: number
-  title: string
-  owner: string
-  status: 'Draft' | 'Under Review' | 'Approved'
-  due_date: string
-  created_at: string
-  task_files?: TaskFile[]
-}
-
-function getBadgeClasses(status: TaskItem['status']) {
-  return status === 'Draft'
-    ? 'bg-amber-100 text-amber-700'
-    : status === 'Under Review'
-    ? 'bg-sky-100 text-sky-700'
-    : 'bg-emerald-100 text-emerald-700'
-}
+const tasksTable = process.env.NEXT_PUBLIC_SUPABASE_TASKS_TABLE ?? 'tasks'
 
 export default function Home() {
-  const [tasks, setTasks] = useState<TaskItem[]>([])
-  const [message, setMessage] = useState<string | null>(null)
-
-  const tasksTable = process.env.NEXT_PUBLIC_SUPABASE_TASKS_TABLE ?? 'tasks'
+  const { profile } = useAuth()
+  const [tasks, setTasks] = useState<Task[]>([])
 
   useEffect(() => {
     const loadTasks = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from(tasksTable)
         .select('*, task_files(*)')
-      .is('deleted_at', null)
-      if (error) {
-        setTasks([])
-        setMessage(`Unable to load tasks: ${error.message}`)
-        return
-      }
-
-      type RawTaskRow = {
-        id?: number
-        title?: string
-        owner?: string
-        status?: TaskItem['status']
-        due_date?: string
-        deleted_at?: string | null
-        created_at?: string
-        task_files?: Array<{
-          id: number
-          task_id: number
-          file_name?: string
-          version?: string
-          file_path?: string
-          file_url?: string
-          uploaded_at?: string
-          created_at?: string
-        }>
-      }
+        .is('deleted_at', null)
 
       const rawTasks = (data ?? []) as RawTaskRow[]
-      const mappedTasks = rawTasks.map((item, index) => ({
-        id: item.id ?? index,
-        title: item.title ?? `Task ${index + 1}`,
-        owner: item.owner ?? 'Unknown',
-        status: item.status ?? 'Draft',
-        due_date: item.due_date ?? new Date().toISOString().slice(0, 10),
-        deleted_at: item.deleted_at,
-        created_at: item.created_at ?? new Date().toISOString(),
-        task_files: (item.task_files ?? []).map((file) => ({
-          id: file.id,
-          task_id: file.task_id,
-          file_name: file.file_name ?? 'Unnamed file',
-          version: file.version ?? 'v1.0',
-          file_path: file.file_path,
-          file_url: file.file_url,
-          uploaded_at: file.uploaded_at ?? file.created_at ?? new Date().toISOString(),
-        })) as TaskFile[],
-      })) as TaskItem[]
-
-      setTasks(mappedTasks)
-      setMessage(null)
+      setTasks(
+        rawTasks.map((item, index) => ({
+          id: item.id ?? index,
+          title: item.title ?? `Task ${index + 1}`,
+          owner: item.owner ?? 'Unknown',
+          status: item.status ?? 'Draft',
+          due_date: item.due_date ?? new Date().toISOString().slice(0, 10),
+          created_at: item.created_at ?? new Date().toISOString(),
+          task_files: (item.task_files ?? []).map((file) => ({
+            id: file.id,
+            task_id: file.task_id,
+            file_name: file.file_name ?? 'Unnamed file',
+            version: file.version ?? 'v1.0',
+            file_path: file.file_path ?? '',
+            file_url: file.file_url ?? '',
+            uploaded_at: file.uploaded_at ?? file.created_at ?? new Date().toISOString(),
+          })) as TaskFile[],
+        }))
+      )
     }
 
     loadTasks()
-  }, [tasksTable])
+  }, [])
 
   const totalFiles = useMemo(
     () => tasks.reduce((sum, task) => sum + (task.task_files?.length ?? 0), 0),
@@ -111,15 +79,11 @@ export default function Home() {
         </aside>
 
         <section className="space-y-6">
-          {message ? (
-            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              {message}
-            </div>
-          ) : null}
-
           <header className="rounded-3xl bg-white px-6 py-6 shadow-sm">
             <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Overview</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-900">Task and file dashboard</h1>
+            <h1 className="mt-2 text-3xl font-semibold text-slate-900">
+              {profile ? `Welcome, ${profile.name}` : 'Task and file dashboard'}
+            </h1>
             <p className="mt-2 text-sm text-slate-600">
               Live overview of task counts, approval status, and uploaded files.
             </p>
@@ -133,13 +97,13 @@ export default function Home() {
             <div className="rounded-3xl bg-white p-5 shadow-sm">
               <p className="text-sm text-slate-500">Under review</p>
               <p className="mt-3 text-3xl font-semibold text-slate-900">
-                {tasks.filter((task) => task.status === 'Under Review').length}
+                {tasks.filter((t) => t.status === 'Under Review').length}
               </p>
             </div>
             <div className="rounded-3xl bg-white p-5 shadow-sm">
               <p className="text-sm text-slate-500">Approved</p>
               <p className="mt-3 text-3xl font-semibold text-slate-900">
-                {tasks.filter((task) => task.status === 'Approved').length}
+                {tasks.filter((t) => t.status === 'Approved').length}
               </p>
             </div>
             <div className="rounded-3xl bg-white p-5 shadow-sm">
@@ -157,22 +121,13 @@ export default function Home() {
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Link
-                  href="/tasks"
-                  className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white text-center transition hover:bg-slate-700"
-                >
+                <Link href="/tasks" className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white text-center transition hover:bg-slate-700">
                   View tasks
                 </Link>
-                <Link
-                  href="/upload"
-                  className="rounded-2xl bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-900 text-center transition hover:bg-slate-100"
-                >
+                <Link href="/upload" className="rounded-2xl bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-900 text-center transition hover:bg-slate-100">
                   Upload file
                 </Link>
-                <Link
-                  href="/users"
-                  className="rounded-2xl bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-900 text-center transition hover:bg-slate-100"
-                >
+                <Link href="/users" className="rounded-2xl bg-slate-50 px-5 py-3 text-sm font-semibold text-slate-900 text-center transition hover:bg-slate-100">
                   Manage users
                 </Link>
               </div>
@@ -203,9 +158,7 @@ export default function Home() {
                           {task.task_files?.length ?? 0} attached file{(task.task_files?.length ?? 0) === 1 ? '' : 's'}
                         </div>
                       </div>
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getBadgeClasses(task.status)}`}>
-                        {task.status}
-                      </span>
+                      <Badge status={task.status} />
                     </div>
                   </div>
                 ))
