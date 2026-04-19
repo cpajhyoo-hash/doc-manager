@@ -87,10 +87,22 @@ export default function TasksPage() {
       toast.error('Only Approvers and Masters can approve tasks.')
       return
     }
-    const { error } = await supabase.from(tasksTable).update({ status }).eq('id', taskId)
-    if (error) { toast.error(`Unable to update status: ${error.message}`); return }
+    const res = await fetch(`/api/tasks/${taskId}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json()
+      toast.error(error ?? 'Unable to update status.')
+      return
+    }
     setTasks((cur) => cur.map((t) => (t.id === taskId ? { ...t, status } : t)))
-    toast.success('Status updated.')
+    toast.success(
+      status === 'Approved'
+        ? 'Status updated and approval emails were triggered.'
+        : 'Status updated.'
+    )
   }
 
   const moveToTrash = async (taskId: number) => {

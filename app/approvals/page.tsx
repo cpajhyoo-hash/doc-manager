@@ -75,10 +75,22 @@ export default function ApprovalsPage() {
   const pendingApprovals = useMemo(() => tasks.filter((t) => t.status === 'Under Review'), [tasks])
 
   const changeStatus = async (taskId: number, newStatus: TaskStatus) => {
-    const { error } = await supabase.from(tasksTable).update({ status: newStatus }).eq('id', taskId)
-    if (error) { toast.error(`Unable to update task: ${error.message}`); return }
+    const res = await fetch(`/api/tasks/${taskId}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    })
+    if (!res.ok) {
+      const { error } = await res.json()
+      toast.error(error ?? 'Unable to update task.')
+      return
+    }
     setTasks((cur) => cur.map((t) => t.id === taskId ? { ...t, status: newStatus } : t))
-    toast.success(newStatus === 'Approved' ? 'Task approved.' : 'Task returned to Draft.')
+    toast.success(
+      newStatus === 'Approved'
+        ? 'Task approved. Notification emails were triggered for all users.'
+        : 'Task returned to Draft.'
+    )
   }
 
   return (
