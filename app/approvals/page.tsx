@@ -32,12 +32,14 @@ type RawTaskRow = {
 const tasksTable = process.env.NEXT_PUBLIC_SUPABASE_TASKS_TABLE ?? 'tasks'
 
 export default function ApprovalsPage() {
-  const { profile } = useAuth()
+  const { profile, user, loading } = useAuth()
   const [tasks, setTasks] = useState<(Task & { updated_at: string })[]>([])
 
   const canApprove = profile?.role === 'Master' || profile?.role === 'Approver'
 
   useEffect(() => {
+    if (loading || !user) return
+
     const load = async () => {
       const { data, error } = await supabase
         .from(tasksTable)
@@ -68,7 +70,7 @@ export default function ApprovalsPage() {
       )
     }
     load()
-  }, [])
+  }, [loading, user])
 
   const pendingApprovals = useMemo(() => tasks.filter((t) => t.status === 'Under Review'), [tasks])
 
@@ -133,7 +135,13 @@ export default function ApprovalsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {pendingApprovals.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={canApprove ? 6 : 5} className="px-6 py-16 text-center text-slate-500">
+                        Loading approvals...
+                      </td>
+                    </tr>
+                  ) : pendingApprovals.length === 0 ? (
                     <tr>
                       <td colSpan={canApprove ? 6 : 5} className="px-6 py-16 text-center text-slate-500">
                         No tasks are currently under review.

@@ -69,7 +69,7 @@ function mapRawTasks(raw: RawTaskRow[]): Task[] {
 }
 
 export default function UploadPage() {
-  const { profile } = useAuth()
+  const { profile, user, loading } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
   const [ownerOptions, setOwnerOptions] = useState<string[]>([])
   const [taskMode, setTaskMode] = useState<'new' | 'existing'>('new')
@@ -88,6 +88,8 @@ export default function UploadPage() {
   }, [profile, newTaskOwner])
 
   const fetchTasks = useCallback(async () => {
+    if (loading || !user) return
+
     const [taskResult, profileResult] = await Promise.all([
       supabase.from(tasksTable).select('*, task_files(*)').is('deleted_at', null).order('created_at', { ascending: false }),
       supabase.from('profiles').select('name').order('name'),
@@ -95,7 +97,7 @@ export default function UploadPage() {
     if (taskResult.error) { toast.error(`Unable to load tasks: ${taskResult.error.message}`); return }
     setTasks(mapRawTasks((taskResult.data ?? []) as RawTaskRow[]))
     setOwnerOptions((profileResult.data ?? []).map((p: { name: string }) => p.name))
-  }, [])
+  }, [loading, user])
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
@@ -209,6 +211,12 @@ export default function UploadPage() {
                   ))}
                 </div>
               </div>
+
+              {loading && (
+                <div className="md:col-span-2 rounded-3xl bg-slate-50 p-4 text-sm text-slate-500">
+                  Loading workspace...
+                </div>
+              )}
 
               {taskMode === 'existing' ? (
                 <div className="md:col-span-2">

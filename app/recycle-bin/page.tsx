@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/auth-context'
 import SidebarNav from '../components/SidebarNav'
 import Badge from '../components/Badge'
 import type { Task, TaskFile, TaskStatus } from '../lib/types'
@@ -41,10 +42,13 @@ const tasksTable = process.env.NEXT_PUBLIC_SUPABASE_TASKS_TABLE ?? 'tasks'
 const taskFilesTable = process.env.NEXT_PUBLIC_SUPABASE_TASK_FILES_TABLE ?? 'task_files'
 
 export default function RecycleBinPage() {
+  const { user, loading } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
   const [deletedFiles, setDeletedFiles] = useState<DeletedFile[]>([])
 
   useEffect(() => {
+    if (loading || !user) return
+
     const load = async () => {
       const [taskResult, filesResult] = await Promise.all([
         supabase
@@ -107,7 +111,7 @@ export default function RecycleBinPage() {
       }
     }
     load()
-  }, [])
+  }, [loading, user])
 
   const restoreTask = async (taskId: number) => {
     const { error } = await supabase.from(tasksTable).update({ deleted_at: null }).eq('id', taskId)
@@ -200,7 +204,11 @@ export default function RecycleBinPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {tasks.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-slate-500">Loading deleted tasks...</td>
+                    </tr>
+                  ) : tasks.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-10 text-center text-slate-500">No deleted tasks.</td>
                     </tr>
@@ -256,7 +264,11 @@ export default function RecycleBinPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {deletedFiles.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-slate-500">Loading deleted files...</td>
+                    </tr>
+                  ) : deletedFiles.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-6 py-10 text-center text-slate-500">No deleted files.</td>
                     </tr>

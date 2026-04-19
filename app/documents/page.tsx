@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/auth-context'
 import SidebarNav from '../components/SidebarNav'
 import Badge from '../components/Badge'
 import type { DocumentItem } from '../lib/types'
@@ -26,9 +27,12 @@ type RawDocumentRow = {
 }
 
 export default function DocumentsPage() {
+  const { user, loading } = useAuth()
   const [documents, setDocuments] = useState<DocumentItem[]>([])
 
   useEffect(() => {
+    if (loading || !user) return
+
     const load = async () => {
       const { data, error } = await supabase
         .from('task_files')
@@ -57,7 +61,7 @@ export default function DocumentsPage() {
       )
     }
     load()
-  }, [])
+  }, [loading, user])
 
   const deleteDocument = async (docId: number, filePath: string) => {
     const res = await fetch('/api/files', {
@@ -102,7 +106,13 @@ export default function DocumentsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {documents.length === 0 ? (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-16 text-center text-slate-500">
+                        Loading documents...
+                      </td>
+                    </tr>
+                  ) : documents.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-6 py-16 text-center text-slate-500">
                         No uploaded files found.

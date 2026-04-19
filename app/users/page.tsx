@@ -15,14 +15,17 @@ const roleColors: Record<UserRole, string> = {
 }
 
 export default function UsersPage() {
-  const { profile: currentProfile } = useAuth()
+  const { profile: currentProfile, user, loading: authLoading } = useAuth()
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
 
   const isMaster = currentProfile?.role === 'Master'
 
   useEffect(() => {
+    if (authLoading || !user) return
+
     const loadProfiles = async () => {
+      setLoading(true)
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -39,7 +42,7 @@ export default function UsersPage() {
     }
 
     loadProfiles()
-  }, [])
+  }, [authLoading, user])
 
   const counts = useMemo(
     () => ({

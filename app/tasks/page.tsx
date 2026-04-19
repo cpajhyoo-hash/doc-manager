@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth-context'
 import SidebarNav from '../components/SidebarNav'
-import Badge from '../components/Badge'
 import type { Task, TaskFile, TaskStatus } from '../lib/types'
 import { STATUS_OPTIONS } from '../lib/types'
 
@@ -53,7 +52,7 @@ function mapRaw(raw: RawTaskRow[]): Task[] {
 }
 
 export default function TasksPage() {
-  const { profile } = useAuth()
+  const { profile, user, loading } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
   const [ownerOptions, setOwnerOptions] = useState<string[]>([])
   const [expandedTaskIds, setExpandedTaskIds] = useState<number[]>([])
@@ -69,6 +68,8 @@ export default function TasksPage() {
   const canApprove = profile?.role === 'Master' || profile?.role === 'Approver'
 
   useEffect(() => {
+    if (loading || !user) return
+
     const load = async () => {
       const [taskResult, profileResult] = await Promise.all([
         supabase.from(tasksTable).select('*, task_files(*)').is('deleted_at', null).order('created_at', { ascending: false }),
@@ -79,7 +80,7 @@ export default function TasksPage() {
       setOwnerOptions((profileResult.data ?? []).map((p: { name: string }) => p.name))
     }
     load()
-  }, [])
+  }, [loading, user])
 
   const updateTaskStatus = async (taskId: number, status: TaskStatus) => {
     if (status === 'Approved' && !canApprove) {
@@ -208,7 +209,11 @@ export default function TasksPage() {
           </div>
 
           <div className="space-y-4">
-            {filteredTasks.length === 0 ? (
+            {loading ? (
+              <div className="rounded-3xl bg-white p-6 shadow-sm text-slate-600">
+                Loading tasks...
+              </div>
+            ) : filteredTasks.length === 0 ? (
               <div className="rounded-3xl bg-white p-6 shadow-sm text-slate-600">
                 {tasks.length === 0 ? 'No tasks found.' : 'No tasks match the current filter.'}
               </div>
