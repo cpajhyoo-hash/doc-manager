@@ -154,8 +154,12 @@ export default function UploadPage() {
         }),
       })
       if (!fileRes.ok) {
-        const { error } = await fileRes.json()
-        throw new Error(error ?? 'Failed to save file record.')
+        let errMsg = 'Failed to save file record.'
+        try {
+          const json = await fileRes.json()
+          if (json?.error) errMsg = json.error
+        } catch {}
+        throw new Error(errMsg)
       }
 
       await fetchTasks()
