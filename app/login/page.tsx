@@ -21,13 +21,12 @@ export default function LoginPage() {
       return
     }
     setLoading(true)
+    const slowWarning = setTimeout(() => {
+      toast.info('Still connecting to database — please wait a few more seconds...')
+    }, 8_000)
     try {
-      const { error } = await Promise.race([
-        supabase.auth.signInWithPassword({ email: email.trim(), password }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Request timed out — check that NEXT_PUBLIC_SUPABASE_URL is correct in Vercel settings.')), 10_000)
-        ),
-      ])
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      clearTimeout(slowWarning)
       if (error) {
         toast.error(error.message)
         return
@@ -35,6 +34,7 @@ export default function LoginPage() {
       router.push('/')
       router.refresh()
     } catch (e) {
+      clearTimeout(slowWarning)
       toast.error(e instanceof Error ? e.message : 'Sign in failed.')
     } finally {
       setLoading(false)
