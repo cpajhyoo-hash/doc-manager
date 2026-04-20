@@ -62,7 +62,7 @@ async function sendApprovalEmail({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   const supabase = makeSupabase(request)
   const {
@@ -80,10 +80,10 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid status.' }, { status: 400 })
   }
 
-  const { id } = await params
-  const taskId = Number(id)
-  if (!Number.isFinite(taskId)) {
-    return NextResponse.json({ error: 'Invalid task id.' }, { status: 400 })
+  const resolvedParams = await Promise.resolve(context.params)
+  const { id } = resolvedParams
+  if (!id) {
+    return NextResponse.json({ error: 'Missing task id.' }, { status: 400 })
   }
 
   const admin = getAdminClient()
@@ -109,7 +109,7 @@ export async function POST(
   const { data: task, error: taskError } = await admin
     .from(tasksTable)
     .update({ status: nextStatus })
-    .eq('id', taskId)
+    .eq('id', id)
     .select('id, title, owner, status')
     .single()
 
@@ -134,7 +134,7 @@ export async function POST(
     try {
       await sendApprovalEmail({
         emails,
-        taskTitle: task.title ?? `Task ${taskId}`,
+        taskTitle: task.title ?? `Task ${id}`,
         owner: task.owner ?? 'Unknown',
         approvedBy: actingProfile.name ?? user.email ?? 'Unknown approver',
       })
