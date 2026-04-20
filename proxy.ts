@@ -23,7 +23,11 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {}
 
   const path = request.nextUrl.pathname
   const isAuthPath = path.startsWith('/login') || path.startsWith('/auth')
@@ -31,12 +35,6 @@ export async function proxy(request: NextRequest) {
   if (!user && !isAuthPath) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  if (user && path === '/login') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
     return NextResponse.redirect(url)
   }
 
