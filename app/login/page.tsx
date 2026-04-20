@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { supabase } from '../lib/supabase'
+import { supabase, missingEnv } from '../lib/supabase'
 
 type Mode = 'signin' | 'signup'
 
@@ -96,6 +96,15 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-6">
+        {missingEnv && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <strong>Configuration error:</strong> Supabase environment variables are missing.
+            Go to your Vercel dashboard → Project → Settings → Environment Variables and confirm
+            <code className="mx-1 rounded bg-red-100 px-1">NEXT_PUBLIC_SUPABASE_URL</code> and
+            <code className="mx-1 rounded bg-red-100 px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>
+            are set, then redeploy.
+          </div>
+        )}
         <div className="text-center">
           <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Document Management</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">
