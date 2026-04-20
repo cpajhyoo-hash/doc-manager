@@ -29,11 +29,14 @@ type RawDocumentRow = {
 export default function DocumentsPage() {
   const { user, loading } = useAuth()
   const [documents, setDocuments] = useState<DocumentItem[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
-    if (loading || !user) return
+    if (loading) return
+    if (!user) { setDataLoading(false); return }
 
     const load = async () => {
+      setDataLoading(true)
       const { data, error } = await supabase
         .from('task_files')
         .select('*, task:tasks(id,title,owner,status,due_date,deleted_at)')
@@ -59,6 +62,7 @@ export default function DocumentsPage() {
             due_date: item.task?.due_date ?? new Date().toISOString().slice(0, 10),
           })) as DocumentItem[]
       )
+      setDataLoading(false)
     }
     load()
   }, [loading, user])
@@ -106,7 +110,7 @@ export default function DocumentsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {loading ? (
+                  {loading || dataLoading ? (
                     <tr>
                       <td colSpan={7} className="px-6 py-16 text-center text-slate-500">
                         Loading documents...

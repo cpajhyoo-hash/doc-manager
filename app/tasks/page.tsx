@@ -58,6 +58,7 @@ export default function TasksPage() {
   const [expandedTaskIds, setExpandedTaskIds] = useState<number[]>([])
   const [dueDateFilter, setDueDateFilter] = useState<'All' | 'This Week'>('All')
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
+  const [dataLoading, setDataLoading] = useState(true)
   const [editValues, setEditValues] = useState<{
     title: string
     owner: string
@@ -68,9 +69,11 @@ export default function TasksPage() {
   const canApprove = profile?.role === 'Master' || profile?.role === 'Approver'
 
   useEffect(() => {
-    if (loading || !user) return
+    if (loading) return
+    if (!user) { setDataLoading(false); return }
 
     const load = async () => {
+      setDataLoading(true)
       const [taskResult, profileResult] = await Promise.all([
         supabase.from(tasksTable).select('*, task_files(*)').is('deleted_at', null).order('created_at', { ascending: false }),
         supabase.from('profiles').select('name').order('name'),
@@ -78,6 +81,7 @@ export default function TasksPage() {
       if (taskResult.error) { toast.error(`Unable to load tasks: ${taskResult.error.message}`); return }
       setTasks(mapRaw((taskResult.data ?? []) as RawTaskRow[]))
       setOwnerOptions((profileResult.data ?? []).map((p: { name: string }) => p.name))
+      setDataLoading(false)
     }
     load()
   }, [loading, user])
@@ -87,22 +91,10 @@ export default function TasksPage() {
       toast.error('Only Approvers and Masters can approve tasks.')
       return
     }
-    const res = await fetch(`/api/tasks/${taskId}/status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    if (!res.ok) {
-      const { error } = await res.json()
-      toast.error(error ?? 'Unable to update status.')
-      return
-    }
+    const { error } = await supabase.from(tasksTable).update({ status }).eq('id', taskId)
+    if (error) { toast.error(`Unable to update status: ${error.message}`); return }
     setTasks((cur) => cur.map((t) => (t.id === taskId ? { ...t, status } : t)))
-    toast.success(
-      status === 'Approved'
-        ? 'Status updated and approval emails were triggered.'
-        : 'Status updated.'
-    )
+    toast.success('Status updated.')
   }
 
   const moveToTrash = async (taskId: number) => {
@@ -221,7 +213,7 @@ export default function TasksPage() {
           </div>
 
           <div className="space-y-4">
-            {loading ? (
+            {loading || dataLoading ? (
               <div className="rounded-3xl bg-white p-6 shadow-sm text-slate-600">
                 Loading tasks...
               </div>

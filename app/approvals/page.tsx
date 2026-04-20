@@ -34,13 +34,16 @@ const tasksTable = process.env.NEXT_PUBLIC_SUPABASE_TASKS_TABLE ?? 'tasks'
 export default function ApprovalsPage() {
   const { profile, user, loading } = useAuth()
   const [tasks, setTasks] = useState<(Task & { updated_at: string })[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
 
   const canApprove = profile?.role === 'Master' || profile?.role === 'Approver'
 
   useEffect(() => {
-    if (loading || !user) return
+    if (loading) return
+    if (!user) { setDataLoading(false); return }
 
     const load = async () => {
+      setDataLoading(true)
       const { data, error } = await supabase
         .from(tasksTable)
         .select('*, task_files(*)')
@@ -68,6 +71,7 @@ export default function ApprovalsPage() {
           })) as TaskFile[],
         }))
       )
+      setDataLoading(false)
     }
     load()
   }, [loading, user])
@@ -151,7 +155,7 @@ export default function ApprovalsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {loading ? (
+                  {loading || dataLoading ? (
                     <tr>
                       <td colSpan={canApprove ? 6 : 5} className="px-6 py-16 text-center text-slate-500">
                         Loading approvals...

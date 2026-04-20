@@ -33,11 +33,14 @@ const tasksTable = process.env.NEXT_PUBLIC_SUPABASE_TASKS_TABLE ?? 'tasks'
 export default function Home() {
   const { profile, user, loading } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
-    if (loading || !user) return
+    if (loading) return
+    if (!user) { setDataLoading(false); return }
 
     const loadTasks = async () => {
+      setDataLoading(true)
       const { data } = await supabase
         .from(tasksTable)
         .select('*, task_files(*)')
@@ -63,6 +66,7 @@ export default function Home() {
           })) as TaskFile[],
         }))
       )
+      setDataLoading(false)
     }
 
     loadTasks()
@@ -148,7 +152,7 @@ export default function Home() {
             </div>
 
             <div className="mt-5 space-y-3">
-              {loading ? (
+              {loading || dataLoading ? (
                 <div className="rounded-3xl bg-slate-50 p-5 text-slate-500">Loading dashboard...</div>
               ) : tasks.length === 0 ? (
                 <div className="rounded-3xl bg-slate-50 p-5 text-slate-500">No tasks available yet.</div>
