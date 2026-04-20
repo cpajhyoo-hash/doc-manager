@@ -35,7 +35,10 @@ export default function DocumentsPage() {
     if (loading) return
     if (!user) { setDataLoading(false); return }
 
-    const load = async () => {
+    let active = true
+    const timer = setTimeout(() => { if (active) setDataLoading(false) }, 10_000)
+
+    ;(async () => {
       setDataLoading(true)
       try {
         const { data, error } = await supabase
@@ -43,6 +46,8 @@ export default function DocumentsPage() {
           .select('*, task:tasks(id,title,owner,status,due_date,deleted_at)')
           .order('uploaded_at', { ascending: false })
 
+        if (!active) return
+        clearTimeout(timer)
         if (error) {
           toast.error(`Unable to load documents: ${error.message}`)
         } else {
@@ -66,9 +71,10 @@ export default function DocumentsPage() {
           )
         }
       } catch {}
-      setDataLoading(false)
-    }
-    load()
+      if (active) { clearTimeout(timer); setDataLoading(false) }
+    })()
+
+    return () => { active = false; clearTimeout(timer) }
   }, [loading, user])
 
   const deleteDocument = async (docId: number, filePath: string) => {

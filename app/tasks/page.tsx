@@ -72,13 +72,18 @@ export default function TasksPage() {
     if (loading) return
     if (!user) { setDataLoading(false); return }
 
-    const load = async () => {
+    let active = true
+    const timer = setTimeout(() => { if (active) setDataLoading(false) }, 10_000)
+
+    ;(async () => {
       setDataLoading(true)
       try {
         const [taskResult, profileResult] = await Promise.all([
           supabase.from(tasksTable).select('*, task_files(*)').is('deleted_at', null).order('created_at', { ascending: false }),
           supabase.from('profiles').select('name').order('name'),
         ])
+        if (!active) return
+        clearTimeout(timer)
         if (taskResult.error) {
           toast.error(`Unable to load tasks: ${taskResult.error.message}`)
         } else {
@@ -86,9 +91,10 @@ export default function TasksPage() {
           setOwnerOptions((profileResult.data ?? []).map((p: { name: string }) => p.name))
         }
       } catch {}
-      setDataLoading(false)
-    }
-    load()
+      if (active) { clearTimeout(timer); setDataLoading(false) }
+    })()
+
+    return () => { active = false; clearTimeout(timer) }
   }, [loading, user])
 
   const updateTaskStatus = async (taskId: number, status: TaskStatus) => {

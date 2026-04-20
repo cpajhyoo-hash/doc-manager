@@ -89,14 +89,15 @@ export default function UploadPage() {
 
   const fetchTasks = useCallback(async () => {
     if (loading || !user) return
-
-    const [taskResult, profileResult] = await Promise.all([
-      supabase.from(tasksTable).select('*, task_files(*)').is('deleted_at', null).order('created_at', { ascending: false }),
-      supabase.from('profiles').select('name').order('name'),
-    ])
-    if (taskResult.error) { toast.error(`Unable to load tasks: ${taskResult.error.message}`); return }
-    setTasks(mapRawTasks((taskResult.data ?? []) as RawTaskRow[]))
-    setOwnerOptions((profileResult.data ?? []).map((p: { name: string }) => p.name))
+    try {
+      const [taskResult, profileResult] = await Promise.all([
+        supabase.from(tasksTable).select('*, task_files(*)').is('deleted_at', null).order('created_at', { ascending: false }),
+        supabase.from('profiles').select('name').order('name'),
+      ])
+      if (taskResult.error) { toast.error(`Unable to load tasks: ${taskResult.error.message}`); return }
+      setTasks(mapRawTasks((taskResult.data ?? []) as RawTaskRow[]))
+      setOwnerOptions((profileResult.data ?? []).map((p: { name: string }) => p.name))
+    } catch {}
   }, [loading, user])
 
   useEffect(() => { fetchTasks() }, [fetchTasks])

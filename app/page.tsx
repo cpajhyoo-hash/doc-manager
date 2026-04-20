@@ -39,39 +39,45 @@ export default function Home() {
     if (loading) return
     if (!user) { setDataLoading(false); return }
 
-    const loadTasks = async () => {
+    let active = true
+    const timer = setTimeout(() => { if (active) setDataLoading(false) }, 10_000)
+
+    ;(async () => {
       setDataLoading(true)
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from(tasksTable)
           .select('*, task_files(*)')
           .is('deleted_at', null)
-
-        const rawTasks = (data ?? []) as RawTaskRow[]
-        setTasks(
-          rawTasks.map((item, index) => ({
-            id: item.id ?? index,
-            title: item.title ?? `Task ${index + 1}`,
-            owner: item.owner ?? 'Unknown',
-            status: item.status ?? 'Draft',
-            due_date: item.due_date ?? new Date().toISOString().slice(0, 10),
-            created_at: item.created_at ?? new Date().toISOString(),
-            task_files: (item.task_files ?? []).map((file) => ({
-              id: file.id,
-              task_id: file.task_id,
-              file_name: file.file_name ?? 'Unnamed file',
-              version: file.version ?? 'v1.0',
-              file_path: file.file_path ?? '',
-              file_url: file.file_url ?? '',
-              uploaded_at: file.uploaded_at ?? file.created_at ?? new Date().toISOString(),
-            })) as TaskFile[],
-          }))
-        )
+        if (!active) return
+        clearTimeout(timer)
+        if (!error) {
+          const rawTasks = (data ?? []) as RawTaskRow[]
+          setTasks(
+            rawTasks.map((item, index) => ({
+              id: item.id ?? index,
+              title: item.title ?? `Task ${index + 1}`,
+              owner: item.owner ?? 'Unknown',
+              status: item.status ?? 'Draft',
+              due_date: item.due_date ?? new Date().toISOString().slice(0, 10),
+              created_at: item.created_at ?? new Date().toISOString(),
+              task_files: (item.task_files ?? []).map((file) => ({
+                id: file.id,
+                task_id: file.task_id,
+                file_name: file.file_name ?? 'Unnamed file',
+                version: file.version ?? 'v1.0',
+                file_path: file.file_path ?? '',
+                file_url: file.file_url ?? '',
+                uploaded_at: file.uploaded_at ?? file.created_at ?? new Date().toISOString(),
+              })) as TaskFile[],
+            }))
+          )
+        }
       } catch {}
-      setDataLoading(false)
-    }
+      if (active) { clearTimeout(timer); setDataLoading(false) }
+    })()
 
-    loadTasks()
+    return () => { active = false; clearTimeout(timer) }
   }, [loading, user])
 
   const totalFiles = useMemo(

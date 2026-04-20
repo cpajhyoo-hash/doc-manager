@@ -42,13 +42,18 @@ export default function ApprovalsPage() {
     if (loading) return
     if (!user) { setDataLoading(false); return }
 
-    const load = async () => {
+    let active = true
+    const timer = setTimeout(() => { if (active) setDataLoading(false) }, 10_000)
+
+    ;(async () => {
       setDataLoading(true)
       try {
         const { data, error } = await supabase
           .from(tasksTable)
           .select('*, task_files(*)')
           .is('deleted_at', null)
+        if (!active) return
+        clearTimeout(timer)
         if (error) {
           toast.error(`Unable to load approvals: ${error.message}`)
         } else {
@@ -75,9 +80,10 @@ export default function ApprovalsPage() {
           )
         }
       } catch {}
-      setDataLoading(false)
-    }
-    load()
+      if (active) { clearTimeout(timer); setDataLoading(false) }
+    })()
+
+    return () => { active = false; clearTimeout(timer) }
   }, [loading, user])
 
   const pendingApprovals = useMemo(() => tasks.filter((t) => t.status === 'Under Review'), [tasks])
