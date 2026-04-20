@@ -55,24 +55,33 @@ export default function SidebarNav() {
         })}
       </div>
 
-      {profile && (
-        <div className="mt-6 border-t border-slate-200 pt-5 space-y-3">
-          <div className="rounded-2xl bg-slate-50 px-4 py-3">
-            <p className="text-xs font-medium text-slate-500 truncate">{profile.email}</p>
-            <p className="mt-0.5 text-sm font-semibold text-slate-900 truncate">{profile.name}</p>
-            <span className={`mt-1.5 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleColors[profile.role] ?? roleColors.Contributor}`}>
-              {profile.role}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+      <div className="mt-6 border-t border-slate-200 pt-5 space-y-3">
+        {profile ? (
+          <>
+            <div className="rounded-2xl bg-slate-50 px-4 py-3">
+              <p className="text-xs font-medium text-slate-500 truncate">{profile.email}</p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-900 truncate">{profile.name}</p>
+              <span className={`mt-1.5 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${roleColors[profile.role] ?? roleColors.Contributor}`}>
+                {profile.role}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Sign out
+            </button>
+          </>
+        ) : (
+          <Link
+            href="/login"
+            className="block w-full rounded-2xl bg-slate-900 px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-slate-700"
           >
-            Sign out
-          </button>
-        </div>
-      )}
+            Sign in
+          </Link>
+        )}
+      </div>
     </nav>
   )
 }
