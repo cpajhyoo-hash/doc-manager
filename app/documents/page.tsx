@@ -37,31 +37,35 @@ export default function DocumentsPage() {
 
     const load = async () => {
       setDataLoading(true)
-      const { data, error } = await supabase
-        .from('task_files')
-        .select('*, task:tasks(id,title,owner,status,due_date,deleted_at)')
-        .order('uploaded_at', { ascending: false })
+      try {
+        const { data, error } = await supabase
+          .from('task_files')
+          .select('*, task:tasks(id,title,owner,status,due_date,deleted_at)')
+          .order('uploaded_at', { ascending: false })
 
-      if (error) { toast.error(`Unable to load documents: ${error.message}`); return }
-
-      const raw = (data ?? []) as RawDocumentRow[]
-      setDocuments(
-        raw
-          .filter((item) => item.task?.deleted_at == null && item.deleted_at == null)
-          .map((item) => ({
-            id: item.id,
-            file_name: item.file_name ?? 'Unknown file',
-            file_path: item.file_path ?? '',
-            task_id: item.task_id,
-            version: item.version ?? 'v1.0',
-            file_url: item.file_url ?? '',
-            uploaded_at: item.uploaded_at ?? new Date().toISOString(),
-            task_title: item.task?.title ?? `Task ${item.task_id}`,
-            owner: item.task?.owner ?? 'Unknown',
-            status: item.task?.status ?? 'Draft',
-            due_date: item.task?.due_date ?? new Date().toISOString().slice(0, 10),
-          })) as DocumentItem[]
-      )
+        if (error) {
+          toast.error(`Unable to load documents: ${error.message}`)
+        } else {
+          const raw = (data ?? []) as RawDocumentRow[]
+          setDocuments(
+            raw
+              .filter((item) => item.task?.deleted_at == null && item.deleted_at == null)
+              .map((item) => ({
+                id: item.id,
+                file_name: item.file_name ?? 'Unknown file',
+                file_path: item.file_path ?? '',
+                task_id: item.task_id,
+                version: item.version ?? 'v1.0',
+                file_url: item.file_url ?? '',
+                uploaded_at: item.uploaded_at ?? new Date().toISOString(),
+                task_title: item.task?.title ?? `Task ${item.task_id}`,
+                owner: item.task?.owner ?? 'Unknown',
+                status: item.task?.status ?? 'Draft',
+                due_date: item.task?.due_date ?? new Date().toISOString().slice(0, 10),
+              })) as DocumentItem[]
+          )
+        }
+      } catch {}
       setDataLoading(false)
     }
     load()

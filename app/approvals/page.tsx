@@ -44,33 +44,37 @@ export default function ApprovalsPage() {
 
     const load = async () => {
       setDataLoading(true)
-      const { data, error } = await supabase
-        .from(tasksTable)
-        .select('*, task_files(*)')
-        .is('deleted_at', null)
-      if (error) { toast.error(`Unable to load approvals: ${error.message}`); return }
-
-      const raw = (data ?? []) as RawTaskRow[]
-      setTasks(
-        raw.map((task, index) => ({
-          id: task.id ?? index,
-          title: task.title ?? `Task ${index + 1}`,
-          owner: task.owner ?? 'Unknown',
-          status: task.status ?? 'Draft',
-          due_date: task.due_date ?? new Date().toISOString().slice(0, 10),
-          created_at: task.created_at ?? new Date().toISOString(),
-          updated_at: task.updated_at ?? task.created_at ?? new Date().toISOString(),
-          task_files: (task.task_files ?? []).map((file) => ({
-            id: file.id,
-            task_id: file.task_id,
-            file_name: file.file_name ?? 'Unknown',
-            version: file.version ?? 'v1.0',
-            file_path: file.file_path ?? '',
-            file_url: file.file_url ?? '',
-            uploaded_at: file.uploaded_at ?? file.created_at ?? new Date().toISOString(),
-          })) as TaskFile[],
-        }))
-      )
+      try {
+        const { data, error } = await supabase
+          .from(tasksTable)
+          .select('*, task_files(*)')
+          .is('deleted_at', null)
+        if (error) {
+          toast.error(`Unable to load approvals: ${error.message}`)
+        } else {
+          const raw = (data ?? []) as RawTaskRow[]
+          setTasks(
+            raw.map((task, index) => ({
+              id: task.id ?? index,
+              title: task.title ?? `Task ${index + 1}`,
+              owner: task.owner ?? 'Unknown',
+              status: task.status ?? 'Draft',
+              due_date: task.due_date ?? new Date().toISOString().slice(0, 10),
+              created_at: task.created_at ?? new Date().toISOString(),
+              updated_at: task.updated_at ?? task.created_at ?? new Date().toISOString(),
+              task_files: (task.task_files ?? []).map((file) => ({
+                id: file.id,
+                task_id: file.task_id,
+                file_name: file.file_name ?? 'Unknown',
+                version: file.version ?? 'v1.0',
+                file_path: file.file_path ?? '',
+                file_url: file.file_url ?? '',
+                uploaded_at: file.uploaded_at ?? file.created_at ?? new Date().toISOString(),
+              })) as TaskFile[],
+            }))
+          )
+        }
+      } catch {}
       setDataLoading(false)
     }
     load()
