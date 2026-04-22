@@ -20,9 +20,18 @@ export default function LoginPage() {
     }
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-      if (error) {
-        toast.error(error.message)
+      const res = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      })
+      if (!res.ok) {
+        let errMsg = 'Sign in failed.'
+        try {
+          const json = await res.json()
+          if (json?.error) errMsg = json.error
+        } catch {}
+        toast.error(errMsg)
         return
       }
       window.location.href = '/'
