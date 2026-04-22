@@ -1,26 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { supabase, missingEnv } from '../lib/supabase'
 
 type Mode = 'signin' | 'signup'
 
-const SIGN_IN_TIMEOUT_MS = 30_000
-
 export default function LoginPage() {
-  const router = useRouter()
   const [mode, setMode] = useState<Mode>('signin')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [dbStatus, setDbStatus] = useState<'unknown' | 'ok' | 'paused'>('unknown')
-
-  useEffect(() => {
-    supabase.auth.signOut()
-  }, [])
 
   const handleSignIn = async () => {
     if (!email.trim() || !password) {
@@ -29,26 +20,14 @@ export default function LoginPage() {
     }
     setLoading(true)
     try {
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('TIMEOUT')), SIGN_IN_TIMEOUT_MS)
-      )
-      const { error } = await Promise.race([
-        supabase.auth.signInWithPassword({ email: email.trim(), password }),
-        timeout,
-      ])
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
       if (error) {
         toast.error(error.message)
         return
       }
-      router.push('/')
-      router.refresh()
+      window.location.href = '/'
     } catch (e) {
-      if (e instanceof Error && e.message === 'TIMEOUT') {
-        setDbStatus('paused')
-        toast.error('Database is not responding. See the banner above for instructions.')
-      } else {
-        toast.error(e instanceof Error ? e.message : 'Sign in failed.')
-      }
+      toast.error(e instanceof Error ? e.message : 'Sign in failed.')
     } finally {
       setLoading(false)
     }
@@ -112,8 +91,7 @@ export default function LoginPage() {
       }
     }
 
-    router.push('/')
-    router.refresh()
+    window.location.href = '/'
   }
 
   return (
@@ -126,20 +104,6 @@ export default function LoginPage() {
             <code className="mx-1 rounded bg-red-100 px-1">NEXT_PUBLIC_SUPABASE_URL</code> and
             <code className="mx-1 rounded bg-red-100 px-1">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>
             are set, then redeploy.
-          </div>
-        )}
-        {dbStatus === 'paused' && (
-          <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 py-4 text-sm text-orange-900">
-            <strong className="block text-base">⚠ Database is paused</strong>
-            <p className="mt-1">Your Supabase project has been paused due to inactivity (free tier).</p>
-            <p className="mt-2 font-medium">To restore it:</p>
-            <ol className="mt-1 list-decimal list-inside space-y-1">
-              <li>Go to <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline font-semibold">supabase.com/dashboard</a></li>
-              <li>Open your project — you will see a <strong>"Restore project"</strong> button</li>
-              <li>Click it and wait ~2 minutes</li>
-              <li>Refresh this page and sign in</li>
-            </ol>
-            <p className="mt-3 text-xs text-orange-700">To prevent this permanently, set up a free ping monitor at <a href="https://uptimerobot.com" target="_blank" rel="noopener noreferrer" className="underline">uptimerobot.com</a> pointing to <code className="bg-orange-100 px-1 rounded">/api/health</code> on your app URL.</p>
           </div>
         )}
         <div className="text-center">
