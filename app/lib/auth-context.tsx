@@ -19,69 +19,33 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 })
 
-async function fetchOrCreateProfile(user: User): Promise<Profile | null> {
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  if (data) return data as Profile
-
-  try {
-    const res = await fetch('/api/setup/me', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: user.user_metadata?.name ?? user.email,
-        email: user.email,
-      }),
-    })
-    if (!res.ok) return null
-    const json = await res.json()
-    return (json.profile as Profile) ?? null
-  } catch {
-    return null
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const failsafe = setTimeout(() => setLoading(false), 5000)
+    const failsafe = setTimeout(() => setLoading(false), 8000)
 
-    supabase.auth.getSession()
-      .then(async ({ data: { session } }) => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then(({ user: u, profile: p }) => {
         clearTimeout(failsafe)
-        setUser(session?.user ?? null)
+        setUser(u ?? null)
+        setProfile(p ?? null)
         setLoading(false)
-        if (session?.user) {
-          try { setProfile(await fetchOrCreateProfile(session.user)) } catch {}
-        }
       })
-      .catch(() => { clearTimeout(failsafe); setLoading(false) })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      .catch(() => {
         clearTimeout(failsafe)
-        setUser(session?.user ?? null)
         setLoading(false)
-        if (session?.user) {
-          try { setProfile(await fetchOrCreateProfile(session.user)) } catch {}
-        } else {
-          setProfile(null)
-        }
-      }
-    )
+      })
 
-    return () => { subscription.unsubscribe(); clearTimeout(failsafe) }
+    return () => clearTimeout(failsafe)
   }, [])
 
   const signOut = async () => {
     await supabase.auth.signOut()
+    window.location.href = '/login'
   }
 
   return (

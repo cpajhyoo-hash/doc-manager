@@ -30,7 +30,7 @@ export async function proxy(request: NextRequest) {
   } catch {}
 
   const path = request.nextUrl.pathname
-  const isAuthPath = path.startsWith('/login') || path.startsWith('/auth')
+  const isAuthPath = path.startsWith('/login') || path.startsWith('/auth') || path.startsWith('/api/')
 
   if (!user && !isAuthPath) {
     const url = request.nextUrl.clone()
